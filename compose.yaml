@@ -1,0 +1,49 @@
+# Deployment wrapper for the official Porkbun MCP server.
+# Compose deploy layer only; pin/provenance evidence lives in README.md.
+#
+# Secret posture (see README):
+#   - This service holds NO Porkbun credentials - none in env, files, or logs.
+#   - Each request must carry the CALLER's Porkbun key pair
+#     (Authorization: Bearer pk1_xxx:sk1_xxx or X-API-Key/X-Secret-API-Key).
+#     The connector validates those upstream against Porkbun /ping and rejects
+#     everything else with 401 before any MCP traffic.
+#   - The gateway mount credential (auth_value) lives only in the gateway's
+#     protected environment file - see README "Gateway mount configuration".
+services:
+  porkbun-mcp:
+    build: .
+    image: porkbun-mcp:0.52.0
+    container_name: porkbun-mcp
+    restart: unless-stopped
+    environment:
+      # In-container listen interface. The HOST-side exposure is restricted by
+      # the ports: entries below (host-network is not used).
+      HOST: "0.0.0.0"
+      PORT: "3008"
+      # RFC 9728 resource metadata base. OAuth flows are Porkbun-hosted and are
+      # not used by the gateway mount (static key-pair bearer auth); set for
+      # metadata correctness only.
+      MCP_PUBLIC_URL: "http://192.168.0.190:3008"
+    ports:
+      # Explicit host-ip allowlist: the port is reachable ONLY via the LAN IP
+      # the gateway mounts and loopback for local diagnostics; no other host
+      # address (including any tailscale IP) exposes it.
+      - "192.168.0.190:3008:3008"
+      - "127.0.0.1:3008:3008"
+    cap_drop:
+      - "ALL"
+    security_opt:
+      - "no-new-privileges:true"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      # /health is served BEFORE the auth gate on purpose (connector source),
+      # and carries only version/served paths - no credential material.
+      test: ["CMD", "wget", "-qO", "-", "http://127.0.0.1:3008/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

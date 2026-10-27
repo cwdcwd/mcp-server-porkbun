@@ -1,0 +1,7 @@
+# runtime junk that must never enter the pinned build or the repo
+node_modules/
+*.tgz
+*.log
+npm-debug.log*
+.DS_Store
+.env
