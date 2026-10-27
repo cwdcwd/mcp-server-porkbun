@@ -179,7 +179,7 @@ report-only (`.github/workflows/verify.yml`).
 | Upstream tag/commit match for the pinned version | VERIFIED (evidence on the bead) |
 | Build host lockfile regenerated and committed | VERIFIED (lockfile `npm ci` on devpi03 + in-container) |
 | Pre-push local HTTP boot + negative probes (node run) | VERIFIED (evidence on the bead) |
-| Container build + boot on devpi06, healthcheck green | VERIFIED (evidence on the bead) |
-| Negative-control ladder on devpi06 (all credential-free) | VERIFIED (evidence on the bead) |
-| LAN-reachability from the gateway vantage, unauthenticated 401 | VERIFIED (evidence on the bead) |
+| Container build + boot on devpi06, healthcheck green | NOT RUN - the container build ran in CI only; the devpi06 container boot is deferred to the deployment/verification stage (bds .9.2/.9.3) |
+| Negative-control ladder on devpi06 (all credential-free) | NOT RUN - the 7/7 ladder is verified on devpi03 (bare node run) and inside CI's container, never against a devpi06-hosted instance; deferred to .9.2/.9.3 |
+| LAN-reachability from the gateway vantage, unauthenticated 401 | NOT RUN - deferred to .9.2/.9.3; needs the live devpi06 endpoint plus a gateway-vantage probe |
 | Real-credential serving (tools/list) | LEFT TO VERIFICATION STAGE (owner key at gateway) |
