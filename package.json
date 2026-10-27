@@ -1,0 +1,17 @@
+{
+  "name": "mcp-server-porkbun",
+  "version": "0.52.0",
+  "private": true,
+  "description": "Pinned, reproducible Docker deployment of the official Porkbun MCP server (@porkbunllc/mcp-server) hosting its native Streamable HTTP connector. The wrapper version mirrors the pinned upstream version.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node node_modules/@porkbunllc/mcp-server/dist/http.js"
+  },
+  "dependencies": {
+    "@porkbunllc/mcp-server": "0.52.0"
+  }
+}

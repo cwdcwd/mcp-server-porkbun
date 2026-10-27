@@ -1,0 +1,69 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  connector-gate-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Reproducible dependency tree: npm ci must succeed against the
+      # committed lockfile (every dependency carries its integrity hash).
+      - name: npm ci from the pinned lockfile
+        run: npm ci --omit=dev
+
+      # Report-only: the pin is deliberate (official package version); audit
+      # output is surfaced for reviewers, it cannot drive dependency drift.
+      - name: npm audit (report-only)
+        run: npm audit --omit=dev || true
+
+      # Gate ladder 1: pinned code, bare process.
+      - name: Boot connector (node) and run credential-free probe ladder
+        run: |
+          env PORT=3979 HOST=127.0.0.1 MCP_PUBLIC_URL=http://127.0.0.1:3979 \
+            node node_modules/@porkbunllc/mcp-server/dist/http.js \
+            > /tmp/boot.log 2>&1 &
+          BGPID=$!
+          for i in $(seq 1 30); do
+            curl -fsS -m 2 http://127.0.0.1:3979/health >/dev/null 2>&1 && break
+            sleep 1
+          done
+          scripts/probe.sh http://127.0.0.1:3979
+          RC=$?
+          kill $BGPID 2>/dev/null
+          exit $RC
+
+      # Gate ladder 2: the shipped container (digest-pinned base, non-root).
+      - name: Build the pinned container image
+        run: docker build -t porkbun-mcp:0.52.0 .
+
+      - name: Boot container and re-run credential-free probe ladder
+        run: |
+          docker run -d --rm --name porkbun-ci \
+            -e HOST=0.0.0.0 -e PORT=3008 \
+            -p 127.0.0.1:3008:3008 porkbun-mcp:0.52.0
+          for i in $(seq 1 30); do
+            curl -fsS -m 2 http://127.0.0.1:3008/health >/dev/null 2>&1 && break
+            sleep 1
+          done
+          scripts/probe.sh http://127.0.0.1:3008
+          RC=$?
+          docker rm -f porkbun-ci >/dev/null 2>&1
+          exit $RC
+
+      - name: Upload boot log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-logs
+          path: |
+            /tmp/boot.log
