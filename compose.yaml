@@ -25,11 +25,14 @@ services:
       # metadata correctness only.
       MCP_PUBLIC_URL: "http://192.168.0.190:3008"
     ports:
-      # Explicit host-ip allowlist: the port is reachable ONLY via the LAN IP
-      # the gateway mounts and loopback for local diagnostics; no other host
-      # address (including any tailscale IP) exposes it.
-      - "192.168.0.190:3008:3008"
-      - "127.0.0.1:3008:3008"
+      # Published on all host addresses, like every other devpi06 MCP (300x:300x).
+      # Access control is the DOCKER-USER fence in /etc/ufw/after.init: only the
+      # gateway (192.168.0.18/.181) may reach :3008; everything else, on every
+      # interface including tailscale, is dropped. Host-ip binds (192.168.0.190:...)
+      # were dropped 2026-10-29: at boot Docker started before eth0 had its IP,
+      # the bind failed ("cannot assign requested address") and the container
+      # stayed down with no retry.
+      - "3008:3008"
     cap_drop:
       - "ALL"
     security_opt:
